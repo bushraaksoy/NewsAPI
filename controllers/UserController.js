@@ -12,11 +12,16 @@ class UserController {
             });
 
             if (user) {
-                res.json({ status: 200, data: user });
+                return res.json({ status: 200, data: user });
             }
-            res.status(400).json({ status: 400, message: 'User not found' });
+
+            return res
+                .status(400)
+                .json({ status: 400, message: 'User not found' });
         } catch (error) {
-            res.status(500).json({ status: 500, message: 'Server Error' });
+            return res
+                .status(500)
+                .json({ status: 500, message: 'Server Error' });
         }
     }
 
@@ -24,9 +29,11 @@ class UserController {
         try {
             const users = await prisma.user.findMany();
 
-            res.json({ status: 200, data: users });
+            return res.json({ status: 200, data: users });
         } catch (error) {
-            res.status(500).json({ status: 500, message: 'Server Error' });
+            return res
+                .status(500)
+                .json({ status: 500, message: 'Server Error' });
         }
     }
 }

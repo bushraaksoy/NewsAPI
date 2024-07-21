@@ -44,7 +44,9 @@ class AuthController {
             if (error instanceof errors.E_VALIDATION_ERROR) {
                 return res.status(400).json({ errors: error.messages });
             } else {
-                res.status(500).json({ status: 500, message: 'Server error' });
+                return res
+                    .status(500)
+                    .json({ status: 500, message: 'Server error' });
             }
         }
     }
@@ -76,6 +78,7 @@ class AuthController {
                     email: user.email,
                     profile: user.profile,
                 };
+
                 const token = jwt.sign(payloadData, process.env.JWT_KEY, {
                     expiresIn: '14d',
                 });
@@ -97,7 +100,9 @@ class AuthController {
             if (error instanceof errors.E_VALIDATION_ERROR) {
                 return res.status(400).json({ errors: error.messages });
             } else {
-                res.status(500).json({ status: 500, message: 'Server error' });
+                return res
+                    .status(500)
+                    .json({ status: 500, message: 'Server error' });
             }
         }
     }
