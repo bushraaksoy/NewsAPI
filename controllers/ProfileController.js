@@ -1,5 +1,5 @@
 import prisma from '../DB/db.config.js';
-import { generateFileName, imageValidator } from '../utils/helper.js';
+import { imageValidator, uploadImage } from '../utils/helper.js';
 
 class ProfileController {
     static async index(req, res) {
@@ -33,14 +33,7 @@ class ProfileController {
                 return res.status(400).json({ errors: { profile: message } });
             }
 
-            const fileName = generateFileName(profile.name);
-            const uploadPath = process.cwd() + '/public/images/' + fileName;
-
-            // upload the image to directory
-
-            profile.mv(uploadPath, (err) => {
-                if (err) throw err;
-            });
+            const fileName = uploadImage(profile);
 
             await prisma.user.update({
                 where: { id: Number(id) },

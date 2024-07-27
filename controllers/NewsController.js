@@ -1,7 +1,7 @@
 import vine, { errors } from '@vinejs/vine';
 import prisma from '../DB/db.config.js';
 import { newsSchema } from '../validations/NewsValidation.js';
-import { generateFileName, imageValidator } from '../utils/helper.js';
+import { delelteImage, imageValidator, uploadImage } from '../utils/helper.js';
 import NewsApiTransform from '../transform/NewsApiTransform.js';
 
 class NewsController {
@@ -58,6 +58,7 @@ class NewsController {
                 .json({ status: 500, message: 'Something went wrong' });
         }
     }
+
     static async store(req, res) {
         try {
             const user = req.user;
@@ -83,12 +84,7 @@ class NewsController {
 
             //  image upload
 
-            const fileName = generateFileName(image.name);
-            const uploadPath = process.cwd() + '/public/images/' + fileName;
-
-            image.mv(uploadPath, (err) => {
-                if (err) throw err;
-            });
+            const fileName = uploadImage(image);
 
             payload.image = fileName;
             payload.user_id = user.id;
@@ -113,6 +109,7 @@ class NewsController {
             }
         }
     }
+
     static async show(req, res) {
         try {
             const id = req.params.id;
@@ -142,51 +139,80 @@ class NewsController {
                 .json({ status: 500, message: 'Something went wrong' });
         }
     }
+
     static async update(req, res) {
         try {
             const id = req.params.id;
             const body = req.body;
+            const user = req.user;
 
-            if (req.files) {
-                const image = req.files?.image;
+            const news = await prisma.news.findUnique({
+                where: { id: Number(id) },
+            });
+            console.log(news);
+
+            // if user is not creator of the news, return unauthorized
+
+            console.log(news.user_id, user.id);
+
+            if (news.user_id != user.id) {
+                return res
+                    .status(400)
+                    .json({ status: 401, message: 'Unautharized user' });
+            }
+
+            const validator = vine.compile(newsSchema);
+            const payload = await validator.validate(body);
+
+            // if request has image file, generate file name and upload
+
+            const image = req?.files?.image;
+
+            if (image) {
+                // check if image is valid file type
                 const message = imageValidator(image?.size, image?.mimetype);
 
                 if (!message === null) {
                     return res.status(400).json({ status: 400, message });
                 }
-                const fileName = generateFileName(image.name);
-                const uploadPath = process.cwd() + '/public/images' + fileName;
+                // upload image
+                const filename = uploadImage(image);
+                payload.image = filename;
 
-                image.mv(uploadPath, (err) => {
-                    if (err) throw err;
-                });
-                body.image = image;
+                // if user is updating image and image is valid, delete old image
+                delelteImage(news.image);
             }
 
-            body.updated_at = new Date();
+            payload.updated_at = new Date();
 
-            const news = await prisma.news.update({
+            await prisma.news.update({
                 where: {
                     id: Number(id),
                 },
-                data: body,
+                data: payload,
             });
 
-            if (user_id != user.id)
-                res.json({
-                    status: 200,
-                    message: 'News updated successfully',
-                    news,
-                });
+            return res.json({
+                status: 200,
+                message: 'News updated successfully',
+                news,
+            });
         } catch (error) {
-            return res
-                .status(500)
-                .json({ status: 500, message: 'Something went wrong' });
+            console.log('The error is', error);
+            if (error instanceof errors.E_VALIDATION_ERROR) {
+                return res.status(400).json({ errors: error.messages });
+            } else {
+                return res
+                    .status(500)
+                    .json({ status: 500, message: 'Server error' });
+            }
         }
     }
+
     static async destroy(req, res) {
         try {
             const id = req.params.id;
+            const user = req.user;
 
             const news = prisma.news.findUnique({ where: { id: Number(id) } });
 
@@ -195,6 +221,14 @@ class NewsController {
                     .status(400)
                     .json({ status: 400, message: 'News not found' });
             }
+
+            if (user.id !== news.user_id) {
+                return res
+                    .status(400)
+                    .json({ status: 401, message: 'Unautharized user' });
+            }
+
+            delelteImage(news.image);
 
             await prisma.news.delete({
                 where: {

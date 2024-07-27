@@ -31,3 +31,22 @@ export const generateFileName = (originalName) => {
 
 export const getImageUrl = (filename) =>
     `${process.env.APP_URL}/images/${filename};`;
+
+export const uploadImage = (image) => {
+    const filename = generateFileName(image.name);
+    const uploadPath = process.cwd() + '/public/images/' + filename;
+
+    image.mv(uploadPath, (err) => {
+        if (err) throw err;
+    });
+
+    return filename;
+};
+
+export const delelteImage = (filename) => {
+    const path = process.cwd() + '/public/images/' + filename;
+    // if the image exists in the path, it will be deleted
+    if (fs.existsSync(path)) {
+        fs.unlinkSync(path);
+    }
+};
